@@ -7,7 +7,7 @@ const BAR_PADDING = 0.3;
 type BarplotProps = {
   width?: number;
   height?: number;
-  data: { x: string; y: number }[];
+  data: { name: string; value: number }[];
 };
 
 export const Barplot = ({ width = 550, height = 330, data }: BarplotProps) => {
@@ -16,7 +16,7 @@ export const Barplot = ({ width = 550, height = 330, data }: BarplotProps) => {
   const boundsHeight = height - MARGIN.top - MARGIN.bottom;
 
   // Y axis is for groups since the barplot is horizontal
-  const groups = data.sort((a, b) => b.y - a.y).map((d) => d.x);
+  const groups = data.sort((a, b) => b.value - a.value).map((d) => d.name);
   const yScale = useMemo(() => {
     return d3
       .scaleBand()
@@ -27,7 +27,7 @@ export const Barplot = ({ width = 550, height = 330, data }: BarplotProps) => {
 
   // X axis
   const xScale = useMemo(() => {
-    const [min, max] = d3.extent(data.map((d) => d.y));
+    const [min, max] = d3.extent(data.map((d) => d.value));
     return d3
       .scaleLinear()
       .domain([0, max || 10])
@@ -36,7 +36,7 @@ export const Barplot = ({ width = 550, height = 330, data }: BarplotProps) => {
 
   // Build the shapes
   const allShapes = data.map((d, i) => {
-    const y = yScale(d.x);
+    const y = yScale(d.name);
     if (y === undefined) {
       return null;
     }
@@ -45,8 +45,8 @@ export const Barplot = ({ width = 550, height = 330, data }: BarplotProps) => {
       <g key={i}>
         <rect
           x={xScale(0)}
-          y={yScale(d.x)}
-          width={xScale(d.y)}
+          y={yScale(d.name)}
+          width={xScale(d.value)}
           height={yScale.bandwidth()}
           opacity={0.7}
           stroke="#9d174d"
@@ -56,14 +56,14 @@ export const Barplot = ({ width = 550, height = 330, data }: BarplotProps) => {
           rx={1}
         />
         <text
-          x={xScale(d.y) - 7}
+          x={xScale(d.value) - 7}
           y={y + yScale.bandwidth() / 2}
           textAnchor="end"
           alignmentBaseline="central"
           fontSize={12}
-          opacity={xScale(d.y) > 90 ? 1 : 0} // hide label if bar is not wide enough
+          opacity={xScale(d.value) > 90 ? 1 : 0} // hide label if bar is not wide enough
         >
-          {d.y}
+          {d.value}
         </text>
         <text
           x={xScale(0) + 7}
@@ -72,7 +72,7 @@ export const Barplot = ({ width = 550, height = 330, data }: BarplotProps) => {
           alignmentBaseline="central"
           fontSize={12}
         >
-          {d.x}
+          {d.name}
         </text>
       </g>
     );

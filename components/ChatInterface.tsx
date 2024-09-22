@@ -54,13 +54,14 @@ type ChartData<T> = {
   type:
     | "string"
     | "table"
-    | "bar"
+    | "barchart"
     | "line"
     | "scatter"
     | "donut"
     | "radar"
     | "heatmap"
-    | "bubble";
+    | "bubble"
+    | "minimalpricedashboard";
   data: T;
 };
 
@@ -168,7 +169,7 @@ const ChatInterface: React.FC = () => {
 
     try {
       const response = await fetch(
-        `https://wapo-testnet.phala.network/ipfs/QmSd7gsyhJxmibxekExAj4WyZKcEACk1oo289LfgFpvzvr?key=2e0a9605d0023f47&chatQuery=${promptToUse}`,
+        `https://wapo-testnet.phala.network/ipfs/QmYS9BHuJ6suQMsn19ZNFwsqbRBd1goTfPRarH7WdqALKW?key=49660ef63f35d583&chatQuery=${promptToUse}`,
         {
           method: "GET",
         }
@@ -179,11 +180,25 @@ const ChatInterface: React.FC = () => {
       }
 
       const data = await response.json();
-      const parsedData = JSON.parse(data);
 
+      for (let i = 0; i < data.response.length; i++) {
+        const botMessage: Message = {
+          isUser: false,
+          content: data.response[i],
+        };
+        setMessages((prevMessages) => {
+          const updatedMessages = [...prevMessages, botMessage];
+          sessionStorage.setItem(
+            "storedHistory",
+            JSON.stringify(updatedMessages)
+          );
+          return updatedMessages;
+        });
+      }
+      /*
       const botMessage: Message = {
         isUser: false,
-        content: parsedData,
+        content: data.response,
       };
       setMessages((prevMessages) => {
         const updatedMessages = [...prevMessages, botMessage];
@@ -193,6 +208,7 @@ const ChatInterface: React.FC = () => {
         );
         return updatedMessages;
       });
+      */
     } catch (error) {
       console.error("Error fetching chart data:", error);
       const errorMessage: Message = {
@@ -216,11 +232,23 @@ const ChatInterface: React.FC = () => {
   };
 
   const renderChart = (chartData: ChartData<any>[], type: string) => {
+    console.log(chartData, type);
     switch (type.toLowerCase()) {
       case "table":
         return (
           <div className="max-w-[550px] p-3.5">
             <Table data={chartData} />
+          </div>
+        );
+      case "barchart":
+        return (
+          <div className="max-w-[550px] p-3.5">
+            <Barplot
+              data={chartData.map((data) => ({
+                name: data.x,
+                value: data.y,
+              }))}
+            />
           </div>
         );
       default:
@@ -384,10 +412,23 @@ const ChatInterface: React.FC = () => {
                   >
                     {message.content}
                   </p>
-                ) : (
+                ) : typeof message.content === "object" ? (
                   <div className="flex flex-wrap -mx-2 justify-center">
-                    {renderChart(message.content.content, message.content.type)}
+                    {message.content.content
+                      ? renderChart(
+                          message.content.content,
+                          message.content.type
+                        )
+                      : renderChart(message.content.data, message.content.type)}
                   </div>
+                ) : (
+                  <p
+                    className={
+                      theme === "dark" ? "text-gray-300" : "text-[#3a3a3a]"
+                    }
+                  >
+                    {message.content}
+                  </p>
                 )}
               </div>
             </div>
