@@ -70,7 +70,8 @@ type Message = {
   content:
     | string
     | {
-        content: ChartData<any>[];
+        data: any[];
+        content: any[];
         type: string;
       };
 };
@@ -231,13 +232,19 @@ const ChatInterface: React.FC = () => {
     );
   };
 
-  const renderChart = (chartData: ChartData<any>[], type: string) => {
+  const renderChart = (chartData: any[], type: string) => {
     console.log(chartData, type);
     switch (type.toLowerCase()) {
       case "table":
         return (
           <div className="max-w-[550px] p-3.5">
-            <Table data={chartData} />
+            <Table
+              data={chartData.map((data) => ({
+                name: "",
+                type: data.type,
+                data: Array.isArray(data.data) ? data.data : [data.data],
+              }))}
+            />
           </div>
         );
       case "barchart":
