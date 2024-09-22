@@ -7,106 +7,95 @@ const BAR_PADDING = 0.3;
 type BarplotProps = {
   width?: number;
   height?: number;
-  data: { name: string; categories: { label: string; value: number }[] }[];
+  data: { x: string; y: number }[];
 };
 
 export const Barplot = ({ width = 550, height = 330, data }: BarplotProps) => {
-  // bounds = area inside the graph axis = calculated by subtracting the margins
+  // bounds = area inside the graph axis = calculated by substracting the margins
   const boundsWidth = width - MARGIN.right - MARGIN.left;
   const boundsHeight = height - MARGIN.top - MARGIN.bottom;
 
-  // Extract all category labels and groups
-  const groups = data.map((d) => d.name);
-  const allCategories = Array.from(
-    new Set(data.flatMap((d) => d.categories.map((cat) => cat.label)))
-  );
-
-  // X scale for the groups
-  const x0Scale = useMemo(() => {
+  // Y axis is for groups since the barplot is horizontal
+  const groups = data.sort((a, b) => b.y - a.y).map((d) => d.x);
+  const yScale = useMemo(() => {
     return d3
       .scaleBand()
       .domain(groups)
-      .range([0, boundsWidth])
+      .range([0, boundsHeight])
       .padding(BAR_PADDING);
-  }, [data, width]);
-
-  // X scale for the sub-groups (categories)
-  const x1Scale = useMemo(() => {
-    return d3
-      .scaleBand()
-      .domain(allCategories)
-      .range([0, x0Scale.bandwidth()])
-      .padding(0.05);
-  }, [data, width]);
-
-  // Y scale for values
-  const yScale = useMemo(() => {
-    const max =
-      d3.max(data.flatMap((d) => d.categories.map((cat) => cat.value))) || 10;
-    return d3.scaleLinear().domain([0, max]).range([boundsHeight, 0]);
   }, [data, height]);
 
-  // Color scale for different categories
-  const colorScale = useMemo(() => {
-    return d3.scaleOrdinal(d3.schemeCategory10).domain(allCategories);
-  }, [allCategories]);
+  // X axis
+  const xScale = useMemo(() => {
+    const [min, max] = d3.extent(data.map((d) => d.y));
+    return d3
+      .scaleLinear()
+      .domain([0, max || 10])
+      .range([0, boundsWidth]);
+  }, [data, width]);
 
   // Build the shapes
   const allShapes = data.map((d, i) => {
-    const x0 = x0Scale(d.name);
+    const y = yScale(d.x);
+    if (y === undefined) {
+      return null;
+    }
+
     return (
-      <g key={i} transform={`translate(${x0},0)`}>
-        {d.categories.map((cat, j) => {
-          const x1 = x1Scale(cat.label);
-          return (
-            <g key={j}>
-              <rect
-                x={x1}
-                y={yScale(cat.value)}
-                width={x1Scale.bandwidth()}
-                height={boundsHeight - yScale(cat.value)}
-                fill={colorScale(cat.label)} // Apply color from the color scale
-                opacity={0.7}
-                stroke={colorScale(cat.label)}
-                strokeWidth={1}
-                rx={1}
-              />
-              <text
-                x={x1 !== undefined ? x1 + x1Scale.bandwidth() / 2 : 0}
-                y={yScale(cat.value) - 7}
-                textAnchor="middle"
-                alignmentBaseline="central"
-                fontSize={12}
-                opacity={0}
-              >
-                {cat.value}
-              </text>
-            </g>
-          );
-        })}
+      <g key={i}>
+        <rect
+          x={xScale(0)}
+          y={yScale(d.x)}
+          width={xScale(d.y)}
+          height={yScale.bandwidth()}
+          opacity={0.7}
+          stroke="#9d174d"
+          fill="#9d174d"
+          fillOpacity={0.3}
+          strokeWidth={1}
+          rx={1}
+        />
+        <text
+          x={xScale(d.y) - 7}
+          y={y + yScale.bandwidth() / 2}
+          textAnchor="end"
+          alignmentBaseline="central"
+          fontSize={12}
+          opacity={xScale(d.y) > 90 ? 1 : 0} // hide label if bar is not wide enough
+        >
+          {d.y}
+        </text>
+        <text
+          x={xScale(0) + 7}
+          y={y + yScale.bandwidth() / 2}
+          textAnchor="start"
+          alignmentBaseline="central"
+          fontSize={12}
+        >
+          {d.x}
+        </text>
       </g>
     );
   });
 
-  // Grid lines for the y-axis
-  const grid = yScale
+  const grid = xScale
     .ticks(5)
     .slice(1)
     .map((value, i) => (
       <g key={i}>
         <line
-          x1={0}
-          x2={boundsWidth}
-          y1={yScale(value)}
-          y2={yScale(value)}
+          x1={xScale(value)}
+          x2={xScale(value)}
+          y1={0}
+          y2={boundsHeight}
           stroke="#808080"
           opacity={0.2}
         />
         <text
-          x={-10}
-          y={yScale(value)}
-          textAnchor="end"
-          alignmentBaseline="middle"
+          x={xScale(value)}
+          y={boundsHeight + 10}
+          textAnchor="middle"
+          alignmentBaseline="central"
           fontSize={9}
           stroke="#808080"
           opacity={0.8}

@@ -64,13 +64,14 @@ type ChartData<T> = {
   data: T;
 };
 
-type BackendResponse = {
-  charts: ChartData<any>[];
-};
-
 type Message = {
   isUser: boolean;
-  content: string | ChartData<any>[];
+  content:
+    | string
+    | {
+        content: ChartData<any>[];
+        type: string;
+      };
 };
 
 type PromptCard = {
@@ -90,26 +91,24 @@ const ChatInterface: React.FC = () => {
 
   const promptCards: PromptCard[] = [
     {
-      title: "Latest Block Info",
-      description: "Show me the latest Ethereum block information",
-      prompt: "Show me the latest Ethereum block information",
+      title: "Latest Swaps",
+      description: "Show me 5 recent swaps on Uniswap",
+      prompt: "Show me 5 recent swaps on Uniswap",
     },
     {
-      title: "Block Transactions",
-      description: "List the transactions in the most recent Ethereum block",
-      prompt: "List the transactions in the most recent Ethereum block",
+      title: "Latest Transactions",
+      description: "Show me the latest 5 transactions",
+      prompt: "Show me the latest 5 transactions",
     },
     {
-      title: "Gas Price Trend",
-      description:
-        "Show me the gas price trend over the last 10 Ethereum blocks",
-      prompt: "Show me the gas price trend over the last 10 Ethereum blocks",
+      title: "Latest Volume",
+      description: "Show me the latest 5 volume",
+      prompt: "Show me the latest 5 volume",
     },
     {
-      title: "Block Time Analysis",
-      description:
-        "Analyze the average block time for the last 100 Ethereum blocks",
-      prompt: "Analyze the average block time for the last 100 Ethereum blocks",
+      title: "Past Volume",
+      description: "Show me the 10 volume of the past 3 days",
+      prompt: "Show me the 10 volume of the past 3 days",
     },
   ];
 
@@ -168,18 +167,23 @@ const ChatInterface: React.FC = () => {
     setLoading(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      const response = await fetch(
+        `https://wapo-testnet.phala.network/ipfs/QmSd7gsyhJxmibxekExAj4WyZKcEACk1oo289LfgFpvzvr?key=2e0a9605d0023f47&chatQuery=${promptToUse}`,
+        {
+          method: "GET",
+        }
+      );
 
-      const response = await fetch("/api/getChartData", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: promptToUse }),
-      });
-      const data: BackendResponse = await response.json();
+      if (!response.ok) {
+        throw new Error("API request failed");
+      }
+
+      const data = await response.json();
+      const parsedData = JSON.parse(data);
 
       const botMessage: Message = {
         isUser: false,
-        content: data.charts ?? data,
+        content: parsedData,
       };
       setMessages((prevMessages) => {
         const updatedMessages = [...prevMessages, botMessage];
@@ -191,6 +195,12 @@ const ChatInterface: React.FC = () => {
       });
     } catch (error) {
       console.error("Error fetching chart data:", error);
+      const errorMessage: Message = {
+        isUser: false,
+        content:
+          "Oops! It looks like your request is outside the scope of our project. ",
+      };
+      setMessages((prevMessages) => [...prevMessages, errorMessage]);
     } finally {
       setLoading(false);
     }
@@ -205,70 +215,78 @@ const ChatInterface: React.FC = () => {
     );
   };
 
-  const renderChart = (chart: ChartData<any>, index: number) => {
-    switch (chart.type) {
-      case "bar":
-        return (
-          <div key={index} className="max-w-[550px] p-3.5">
-            <Barplot data={chart.data} />
-          </div>
-        );
-      case "line":
-        return (
-          <div key={index} className="max-w-[550px] p-3.5">
-            <LineGraph data={chart.data} />
-          </div>
-        );
-      case "scatter":
-        return (
-          <div key={index} className="max-w-[550px] p-3.5">
-            <ScatterPlot data={chart.data} />
-          </div>
-        );
-      case "donut":
-        return (
-          <div key={index} className="max-w-[550px] p-3.5">
-            <DonutChart data={chart.data} />
-          </div>
-        );
-      case "radar":
-        return (
-          <div key={index} className="max-w-[550px] p-3.5">
-            <Radar
-              data={chart.data}
-              axisConfig={[
-                { name: "speed", max: 10 },
-                { name: "acceleration", max: 10 },
-                { name: "conso", max: 10 },
-                { name: "safety", max: 2 },
-                { name: "style", max: 1000 },
-                { name: "price", max: 100 },
-              ]}
-            />
-          </div>
-        );
-      case "heatmap":
-        return (
-          <div key={index} className="max-w-[550px] p-3.5">
-            <Heatmap data={chart.data} />
-          </div>
-        );
-      case "bubble":
-        return (
-          <div key={index} className="max-w-[550px] p-3.5">
-            <BubblePlot data={chart.data} />
-          </div>
-        );
+  const renderChart = (chartData: ChartData<any>[], type: string) => {
+    switch (type.toLowerCase()) {
       case "table":
         return (
-          <div key={index} className="max-w-[550px] p-3.5">
-            <Table data={chart.data} />
+          <div className="max-w-[550px] p-3.5">
+            <Table data={chartData} />
           </div>
         );
       default:
         return null;
     }
   };
+
+  <div>
+    <h2
+      className={`text-2xl font-bold text-center mb-2 ${
+        theme === "dark" ? "text-white" : "text-[#2f3c56]"
+      }`}
+    >
+      Welcome to DefiDash!
+    </h2>
+    <p
+      className={`text-center mb-2 ${
+        theme === "dark" ? "text-gray-300" : "text-[#2f3c56]"
+      }`}
+    >
+      Your go-to AI chatbot for all things cryptocurrency.
+    </p>
+    <p
+      className={`text-center mb-10 ${
+        theme === "dark" ? "text-gray-400" : "text-[#3a3a3a]"
+      }`}
+    >
+      To get started, try one of these popular prompts:
+    </p>
+
+    <ul
+      role="list"
+      className="grid grid-cols-1 gap-6 text-[#2f3c56] sm:grid-cols-2 lg:grid-cols-2"
+    >
+      {promptCards.map((card, index) => (
+        <li
+          key={index}
+          className={`col-span-1 rounded-lg shadow cursor-pointer transition-colors duration-200 ${
+            theme === "dark"
+              ? "bg-gray-700 hover:bg-gray-600"
+              : "bg-[#e9edef] hover:bg-[#d3cfcf]"
+          }`}
+          onClick={() => handlePromptCardClick(card.prompt)}
+        >
+          <div className="p-6">
+            <div className="flex items-center space-x-3">
+              <h3
+                className={`truncate text-sm font-medium ${
+                  theme === "dark" ? "text-white" : "text-[#2f3c56]"
+                }`}
+              >
+                {card.title}
+              </h3>
+            </div>
+            <p
+              className={`mt-1 truncate text-sm ${
+                theme === "dark" ? "text-gray-300" : "text-[#3a3a3a]"
+              }`}
+            >
+              {card.description}
+            </p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  </div>;
 
   return (
     <div
@@ -337,50 +355,43 @@ const ChatInterface: React.FC = () => {
         onScroll={handleScroll}
       >
         {messages.length > 0 ? (
-          messages.map(
-            (message, index) =>
-              message.content?.length > 0 && (
-                <div
-                  key={index}
-                  className={`flex ${
-                    message.isUser
-                      ? "flex-row-reverse items-start"
-                      : "items-start"
-                  }`}
-                >
-                  {!message.isUser && (
-                    <Image
-                      className="mr-2 rounded-full"
-                      src="/images/defi.png"
-                      alt="Defi Bot"
-                      width="32"
-                      height="32"
-                    />
-                  )}
-                  <div
-                    className={`flex rounded-b-xl p-4 sm:max-w-md md:max-w-2xl lg:max-w-6xl ${
-                      message.isUser ? "rounded-tl-xl" : "rounded-tr-xl"
-                    } ${theme === "dark" ? "bg-gray-700" : "bg-[#f0f4fa]"}`}
+          messages.map((message, index) => (
+            <div
+              key={index}
+              className={`flex ${
+                message.isUser ? "flex-row-reverse items-start" : "items-start"
+              }`}
+            >
+              {!message.isUser && (
+                <Image
+                  className="mr-2 rounded-full"
+                  src="/images/defi.png"
+                  alt="Defi Bot"
+                  width="32"
+                  height="32"
+                />
+              )}
+              <div
+                className={`flex rounded-b-xl p-4 sm:max-w-md md:max-w-2xl lg:max-w-6xl ${
+                  message.isUser ? "rounded-tl-xl" : "rounded-tr-xl"
+                } ${theme === "dark" ? "bg-gray-700" : "bg-[#f0f4fa]"}`}
+              >
+                {typeof message.content === "string" ? (
+                  <p
+                    className={
+                      theme === "dark" ? "text-gray-300" : "text-[#3a3a3a]"
+                    }
                   >
-                    {typeof message.content === "string" ? (
-                      <p
-                        className={
-                          theme === "dark" ? "text-gray-300" : "text-[#3a3a3a]"
-                        }
-                      >
-                        {message.content}
-                      </p>
-                    ) : (
-                      <div className="flex flex-wrap -mx-2 justify-center">
-                        {message.content.map((chart, chartIndex) =>
-                          renderChart(chart, chartIndex)
-                        )}
-                      </div>
-                    )}
+                    {message.content}
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap -mx-2 justify-center">
+                    {renderChart(message.content.content, message.content.type)}
                   </div>
-                </div>
-              )
-          )
+                )}
+              </div>
+            </div>
+          ))
         ) : (
           <div>
             <h2
