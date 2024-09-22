@@ -170,7 +170,7 @@ const ChatInterface: React.FC = () => {
 
     try {
       const response = await fetch(
-        `https://wapo-testnet.phala.network/ipfs/QmYS9BHuJ6suQMsn19ZNFwsqbRBd1goTfPRarH7WdqALKW?key=49660ef63f35d583&chatQuery=${promptToUse}`,
+        `https://wapo-testnet.phala.network/ipfs/Qmempc9KWTeK2DtfcX4uqiMrrTWad3Vc1a495qsizHRx4t?key=4c244f18fe0005cb=${promptToUse}`,
         {
           method: "GET",
         }
